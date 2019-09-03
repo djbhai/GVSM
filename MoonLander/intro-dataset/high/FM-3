@@ -1,0 +1,27 @@
+Your program shall accept user input, indicating the desired action. Ac-
+ceptable user inputs are integers 1,2,3. If any other integer number is
+enered, the program shall simply output the main menu and the prompt
+again:
+
+********* Moon Landing Program v. 1.0 ******************
+
+Written by:   Alexander Dekhtyar
+
+Please select an action:
+
+1. Play Game
+2. Instructions
+3. Quit
+
+Your choice :>>8
+Please select an action:
+
+1. Play Game
+2. Instructions
+3. Quit
+
+Your choice :>>
+
+Your program is not responsible for handling any other type of input (e.g.,
+if a character or a string has been entered instead of an integer).
+

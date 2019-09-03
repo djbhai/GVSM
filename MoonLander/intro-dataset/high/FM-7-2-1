@@ -1,0 +1,8 @@
+At the beginning of each game loop iteration, your program shall
+display current status of the game. Current status includes
+
+i. time elapsed since the beginning fo the landing (in seconds);
+ii. distance left to the Moon (in feet);
+iii. amount of fuel left (units);
+iv. current velocity (feet/sec).
+

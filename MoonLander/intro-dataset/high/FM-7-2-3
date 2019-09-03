@@ -1,0 +1,4 @@
+Once a valid amount of fuel is read the program compute the new
+velocity of the ship and the new distance to the moon. Use the
+formulas above to compute this.
+

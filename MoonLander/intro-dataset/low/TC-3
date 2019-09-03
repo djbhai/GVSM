@@ -1,0 +1,21 @@
+Steps
+------------------------
+  1. Start Moon Lander.
+  2. At the menu, type 2 and hit enter.
+
+Output
+------------------------
+* * * * * * * * The Game * * * * * * * * * * * * * * * * *
+ You are to land a spaceship on the moon.
+ You control the speed of your spaceship by telling it
+ how much fuel has to be burned every second.
+ 5 units of fuel cancel the Moon gravity, more - will deccelerate your ship.
+ Do not run out of fuel.
+ To land successfully your velocity should not exceed 10 feet/sec
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+Please select an action:
+1. Play Game
+2. Instructions
+3. Quit
+Your choice :>>
+

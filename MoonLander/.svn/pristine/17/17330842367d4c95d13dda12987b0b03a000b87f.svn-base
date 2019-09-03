@@ -1,0 +1,12 @@
+If the user chooses Quit, i.e., enters 3 the program shall print a good-
+bye message and exit.
+
+Please select an action:
+
+1. Play Game
+2. Instructions
+3. Quit
+
+Your choice :>>3
+Bye ! Thanks for playing Moon Landing
+

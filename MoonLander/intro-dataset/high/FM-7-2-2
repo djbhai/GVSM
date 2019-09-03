@@ -1,0 +1,8 @@
+After the status is displayed, the program shall prompt the user to
+enter amount of fuel to be burned (injected) over the next second.
+The program shall read the amount of fuel (an int value).
+The amount of fuel entered by the user shall be tested: it shall not
+be negative and it cannot exceed amount of fuel left. The prompt for
+the amount of fuel to burn shall be repeated and a new value read
+until a valid value had been entered.
+

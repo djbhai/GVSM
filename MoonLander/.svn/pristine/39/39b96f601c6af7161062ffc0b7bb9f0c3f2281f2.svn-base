@@ -1,0 +1,4 @@
+During the game initialization stage, the program shall set the initial values
+for the distance to the Moon, amount of fuel left and ship velocity. These
+parameters were specified above.
+

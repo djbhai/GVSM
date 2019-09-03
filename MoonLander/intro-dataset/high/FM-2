@@ -1,0 +1,17 @@
+After that the main loop of the program starts. At the beginning of each
+loop, the program shall display a text menu with three choices and prompt
+the user to make a selection. The menu choices are 1. Play Game,
+2. Instructions, 3. Quit:
+
+Please select an action:
+
+1. Play Game
+2. Instructions
+3. Quit
+
+Your choice :>>
+
+(Note, there is an empty line between the Written by: line of the
+output and the Please select an action: line. Note also that :>>
+is the prompt used in the program.)
+

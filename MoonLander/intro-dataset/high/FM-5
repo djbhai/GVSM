@@ -1,0 +1,27 @@
+If the user chooses Instructions, i.e., enters 2 the instructions on
+how to play the game shall be printed After that the program shall loop
+back to the menu. The text of the instructions is as follows:
+
+Please select an action:
+
+1. Play Game
+2. Instructions
+3. Quit
+
+Your choice :>>2
+* * * * * * * * The Game * * * * * * * * * * * * * * * * *
+ You are to land a spaceship on the moon.
+ You control the speed of your spaceship by telling it
+ how much fuel has to be burned every second.
+ 5 units of fuel cancel the Moon gravity, more - will deccelerate your ship.
+ Do not run out of fuel.
+ To land successfully your velocity should not exceed 10 feet/sec
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+Please select an action:
+
+1. Play Game
+2. Instructions
+3. Quit
+
+Your choice :>>
+

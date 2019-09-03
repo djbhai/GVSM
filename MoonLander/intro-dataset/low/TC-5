@@ -1,0 +1,13 @@
+Steps
+------------------------
+  1. Start Moon Lander.
+  2. At the menu, type 1 and hit enter.
+  3. Burn 10 units of fuel: type 10 and hit enter.
+
+Output
+------------------------
+Time Elapsed: 1 seconds
+Distance: 427.5 feet
+Fuel: 110
+Velocity: 45 feet/sec
+

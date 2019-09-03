@@ -1,0 +1,4 @@
+If the user chooses Play Game, i.e., enters 1, the game shall com-
+mence. See requirements below for the in-game specifications. After the
+game is over, the program shall loop back to the menu.
+
