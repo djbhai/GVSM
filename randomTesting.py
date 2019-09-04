@@ -28,6 +28,18 @@ InputFileNames = listdir("MoonLander/intro-dataset/high")
 OutputFileNames = listdir("MoonLander/intro-dataset/low")
 
 srL=[]
+srDict={}
+def logistics():
+    maximum = 120
+    n= 0
+    sums = 0
+    while(sums<=5766):
+        prev= sums
+        sums+= maximum-(n+1)
+        n+=1
+    print("N1 is "+str(n))
+    print("sum is " + str(prev))
+logistics()   
 
 def kbih(signal,frame):
     with open("srList.txt","wb") as fp:
@@ -149,13 +161,13 @@ def computeSrs(features):
     while(n1 < len(features)-1):
         n2 = n1+1
         while(n2 <=len(features)-1):
-            print("Iteration: "+str(itr))
-            srL.append(wnUtils.sr(wn.synset(features[n1]),wn.synset(features[n2])))
             itr+=1
+            srDict[itr] = wnUtils.sr(wn.synset(features[n1]),wn.synset(features[n2]))
+            print("Iteration: "+str(itr))
             n2+=1
         n1+=1
     
-    return srL
+    return srDict
     
     
 def getTfIdf(inputDict,outputDict):
@@ -251,7 +263,8 @@ def cosineSim2():
             break    # break when features are read
         tfIdfsDense.append(item.todense())
     srs=computeSrs(features)
-    print(len(srs))
+    with open("srDict.txt","wb") as fp:
+        pickle.dump(srs,fp)
     #should be 120*119/2 for n = 120, 7140
 #wordnetGraph():
 cosineSim2()
