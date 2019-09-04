@@ -18,16 +18,23 @@ import re
 import pickle
 from spellchecker import SpellChecker
 import signal
+import pprint
 
 k=0
 p=0
-wnUtils = wordnetUtils.wordnetUtils(k,p)
-wn= nltk.corpus.wordnet
+a=0
+pp = pprint.PrettyPrinter(width = 41,compact = True)
 
+pp.pprint("Working")
+
+wnUtils = wordnetUtils.wordnetUtils(k,p,a)
+wn= nltk.corpus.wordnet
 InputFileNames = listdir("MoonLander/intro-dataset/high")
 OutputFileNames = listdir("MoonLander/intro-dataset/low")
 
 srL=[]
+
+
 
 def kbih(signal,frame):
     with open("srList.txt","wb") as fp:
@@ -149,7 +156,7 @@ def computeSrs(features):
     while(n1 < len(features)-1):
         n2 = n1+1
         while(n2 <=len(features)-1):
-            print("Iteration: "+str(itr))
+            pp.pprint("Iteration: "+str(itr))
             srL.append(wnUtils.sr(wn.synset(features[n1]),wn.synset(features[n2])))
             itr+=1
             n2+=1
@@ -251,7 +258,7 @@ def cosineSim2():
             break    # break when features are read
         tfIdfsDense.append(item.todense())
     srs=computeSrs(features)
-    print(len(srs))
+    pp.pprint(len(srs))
     #should be 120*119/2 for n = 120, 7140
 #wordnetGraph():
 cosineSim2()

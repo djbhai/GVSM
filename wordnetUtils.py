@@ -20,16 +20,18 @@ import math
 from spellchecker import SpellChecker
 import networkx as nx
 import matplotlib.pyplot as plt
+import pprint
 
 class wordnetUtils:
     """
     wn =0
     wnGraph = 0
     """
-    def __init__(self,wn,wnGraph):
+    def __init__(self,wn,wnGraph,pp):
         self.wn=nltk.corpus.wordnet
         self.wnGraph = self.wnGraphInitializer()
-        print(self.wnGraph)   #debug
+        self.pp = pprint.PrettyPrinter(width=41,compact=True)
+        self.pp.pprint(self.wnGraph)   #debug
     #self can only be used in class methods scope
     #instance variables can be accessed using self in method scope.
     
@@ -786,8 +788,8 @@ class wordnetUtils:
                 visited.add(maximNd)
                 toexpand = maximNd
                
-        print("sr of the second synset")       
-        print(network.nodes[s2]['sr'])  
+        self.pp.pprint("sr of the second synset")       
+        self.pp.pprint(network.nodes[s2]['sr'])  
         """    
         print("number of edges")
         print(nx.number_of_edges(network))
