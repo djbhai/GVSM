@@ -20,6 +20,7 @@ import math
 from spellchecker import SpellChecker
 import networkx as nx
 import matplotlib.pyplot as plt
+from Lib import heapq
 
 class wordnetUtils:
     """
@@ -725,16 +726,122 @@ class wordnetUtils:
             depList.append(self.wnGraph.nodes[node]['depth'])
         
         print(max(depList))
-    
-    
+        
+    def heapDjikstra(self,s1,s2,network):
+        #underconsttuction
+        #found = set()
+        found = []
+        entryFinder= {}
+        visited = set()
+        recentlyAdded = s1
+        #visited.add(s1)
+        toexpand = s1
+        # Try visited.pop!= s2
+        #while(s2 not in visited):
+        while(s2 != recentlyAdded):
+            successors=set(network.neighbors(toexpand))
+            for item in successors-visited:
+                ts = network.nodes[toexpand]['sr']
+                adict = network[toexpand][item]
+                iweight =0
+                for key,value in adict.items():
+                    if(iweight<value['weight']):
+                        iweight = value['weight']
+                d1= network.nodes[toexpand]['depth']
+                d2 = network.nodes[item]['depth']
+                num = 2*d1*d2
+                den = (d1+d2)*20
+                hm = num/den
+                srReal = hm*iweight*ts
+                srHeap = -srReal
+                if(srReal>network.nodes[item]['sr']):
+                    srDict = {item:{'sr':srReal}}
+                    nx.set_node_attributes(network,srDict)
+                    heapEntry = [srHeap,item]
+                    """
+                    oldEntry = entryFinder.pop(item)
+                    if(oldEntry!=0):
+                        oldEntry[-1]= "removed"
+                    entryFinder[item] = heapEntry
+                    """
+                    #REMOVE item from the set and add item the new item
+                    
+                    heapq.heappush(found,heapEntry)
+            maxim =0
+            
+            maxim,node = heapq.heappop(found)
+            
+            #print(maxim,node)
+            
                 
+            """
+            for item in found:              #If found can be made a heap,that will improve the performance.
+                                            #This and thresholds to stop the operation should improve the performance.
+                if(network.nodes[item]['sr']>maxim):
+                    maxim =network.nodes[item]['sr']
+                    maximNd = item
+            found.remove(maximNd)
+            """
+            """
+            print("maxNd "+str(maximNd))
+            print(maxim)
+            """
+            #print("max found "+str(maxim))
+            
+            visited.add(node)
+            toexpand = node
+            recentlyAdded = node
+        return network.nodes[s2]['sr']
+    
+    def amDjikstra(self,s1,s2,network):
+        found = set()
+        visited = set()
+        visited.add(s1)
+        toexpand = s1
+        while(s2 not in visited):
+            successors=set(network.neighbors(toexpand))
+            for item in successors-visited:
+                ts = network.nodes[toexpand]['sr']
+                adict = network[toexpand][item]
+                iweight =0
+                for key,value in adict.items():
+                    if(iweight<value['weight']):
+                        iweight = value['weight']
+                d1= network.nodes[toexpand]['depth']
+                d2 = network.nodes[item]['depth']
+                num = 2*d1*d2
+                den = (d1+d2)*20
+                hm = num/den
+                sr = hm*iweight*ts
+                if(sr>network.nodes[item]['sr']):
+                    srDict = {item:{'sr':sr}}
+                    nx.set_node_attributes(network,srDict)
+                    
+                    #REMOVE item from the set and add item the new item
+                    found.add(item)
+            maxim =0
+            for item in found:              #If found can be made a heap,that will improve the performance.
+                                            #This and thresholds to stop the operation should improve the performance.
+                if(network.nodes[item]['sr']>maxim):
+                    maxim =network.nodes[item]['sr']
+                    maximNd = item
+            found.remove(maximNd)
+            """
+            print("maxNd "+str(maximNd))
+            print(maxim)
+            """
+            #print("max found "+str(maxim))
+            visited.add(maximNd)
+            toexpand = maximNd
+        return network.nodes[s2]['sr']
+    
     def srComputation(self,s1,s2):
         found = set()
         visited = set()
         visited.add(s1)
         toexpand = s1
         network = self.computeNetwork(s1,s2) #incase other method needs to be used network should be replaced 
-                                        #by scaled and the below lines of code must be used.
+                                        #by scaled and the below lines of code must be used
         #scaled = scaledWeightedGraph(s1,s2)
         if(network == 0):
             return 0
@@ -743,78 +850,19 @@ class wordnetUtils:
         #print(scaled.nodes[s2]['sr'])
         insrDict ={toexpand:{'sr':1}}
         nx.set_node_attributes(network,insrDict)
-        """
-        print("s1 depth")
-        """
-        d1= network.nodes[s1]['depth']
-        """
-        print(d1)
-        """
         if(network == 0):
             return 0
         else:
-            while(s2 not in visited):
-                successors=set(network.neighbors(toexpand))
-                for item in successors-visited:
-                    ts = network.nodes[toexpand]['sr']
-                    adict = network[toexpand][item]
-                    iweight =0
-                    for key,value in adict.items():
-                        if(iweight<value['weight']):
-                            iweight = value['weight']
-                    d1= network.nodes[toexpand]['depth']
-                    d2 = network.nodes[item]['depth']
-                    num = 2*d1*d2
-                    den = (d1+d2)*20
-                    hm = num/den
-                    sr = hm*iweight*ts
-                    if(sr>network.nodes[item]['sr']):
-                        srDict = {item:{'sr':sr}}
-                        nx.set_node_attributes(network,srDict)
-                        found.add(item)
-                maxim =0
-                for item in found:
-                    if(network.nodes[item]['sr']>maxim):
-                        maxim =network.nodes[item]['sr']
-                        maximNd = item
-                found.remove(maximNd)
-                """
-                print("maxNd "+str(maximNd))
-                print(maxim)
-                """
-                #print("max found "+str(maxim))
-                visited.add(maximNd)
-                toexpand = maximNd
-               
+            #sr = self.amDjikstra(s1,s2,network)
+            sr = self.heapDjikstra(s1,s2,network)
         print("sr of the second synset")       
-        print(network.nodes[s2]['sr'])  
-        """    
-        print("number of edges")
-        print(nx.number_of_edges(network))
-        """
-        return network.nodes[s2]['sr']
+        print(sr)
+        return sr
+        
     
-                        
     def sr(self,s1,s2):
         sr1= self.srComputation(s1,s2)
-        """
-        sr2 = srComputation(s2,s1)
-        print("srs:")
-        print(sr1)
-        print(sr2)
-        srVal = (sr1+sr2)/2
-        print(srVal)
-        
-        return srVal
-        """
         return sr1
-    
-    """
-    s1 = wn.synset("basenji.n.01")
-    s2 = wn.synset("dog.n.01")
-    sr(s1,s2)
-    """   
-        
         
     #print(len(sg))
     def test():
@@ -823,7 +871,7 @@ class wordnetUtils:
         #test for symmetry of relations
         #symmetrify(wnGraph)
         
-        
+        print("baba")
         """
         b = symRelationsTest('pertainym')
         print(b)
@@ -909,4 +957,9 @@ class wordnetUtils:
         print(s.hyponyms())
         ss= wn.synset('act.v.01')
         print(ss.root_hypernyms())
-         """      
+         """    
+wn = nltk.corpus.wordnet
+k=0
+p=0
+wnUtils = wordnetUtils(k,p)
+wnUtils.sr(wn.synset('entity.n.01'),wn.synset('lion.n.01'))        

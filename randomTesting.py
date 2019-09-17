@@ -8,44 +8,60 @@ import wordnetUtils
 import nltk.corpus
 import numpy as np
 from scipy.sparse import csr_matrix
+from scipy.spatial.distance import cosine
 from os import listdir
+import os
 import nltk
 from nltk.stem.wordnet import WordNetLemmatizer
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 from nltk.corpus.reader.wordnet import Lemma,Synset 
 from nltk.corpus import stopwords
+from tkinter import filedialog
 import re
 import pickle
 from spellchecker import SpellChecker
 import signal
+import concurrent.futures
+
 
 k=0
 p=0
 wnUtils = wordnetUtils.wordnetUtils(k,p)
 wn= nltk.corpus.wordnet
+If = filedialog.askdirectory(initialdir=os.getcwd(),title="select high directory")
+print(If)
+Of = filedialog.askdirectory(initialdir=os.getcwd(),title="select low directory")
+print(Of)
+InputFileNames= listdir(If)
+OutputFileNames= listdir(Of)
+srDict={}      #To store sr's in index numbered dict
+Vocab =set([])
+Untagged = set([])
+inputDict={}
+outputDict={}
+traceLinks =[(1,0),(3,1),(4,2),(5,0),(7,3),(9,4),(6,3),(7,4)]  #moon lander
 
-InputFileNames = listdir("MoonLander/intro-dataset/high")
-OutputFileNames = listdir("MoonLander/intro-dataset/low")
 
-srL=[]
-srDict={}
 def logistics():
     maximum = 120
     n= 0
     sums = 0
-    while(sums<=5766):
+    while(sums<=4760):
         prev= sums
         sums+= maximum-(n+1)
         n+=1
     print("N1 is "+str(n))
+    max1 = maximum - n
+    print(max1)
+    
     print("sum is " + str(prev))
-logistics()   
+#logistics()   
 
-def kbih(signal,frame):
-    with open("srList.txt","wb") as fp:
-        pickle.dump(srL,fp)
-    exit(0)
-signal.signal(signal.SIGINT, kbih)
+def Tokenizer(s):
+        regexp = '(\w)*\.[avrns]\.[0-9]*'
+        wds = s.split(" ")
+        return wds
 
 def get_wordnet_pos(listOfTokens):
     """Map POS tag to first character lemmatize() accepts"""
@@ -61,33 +77,44 @@ def get_wordnet_pos(listOfTokens):
         wposTokens.append((token[0],tag))  
     return wposTokens
 
-Vocab =set([])
-Untagged = set([])
 
-def dataPreProcessing(inputs,outputs,includeUT):
+
+def tokenize(inputs,outputs):
     pathToInputFiles = []
     pathToOutputFiles  = []
-    inputDict = {}
-    outputDict ={}
-    totalTokens =0
-    with open("senseMappings.txt","rb") as fp:
-        senseMappings = pickle.load(fp)
-    stop_words = set(stopwords.words('english'))
+    tokenizedDict={}
     lemmatizer = WordNetLemmatizer()
     for file in inputs:
-        pathToInputFiles.append("MoonLander/intro-dataset/high/"+file)
-    for file in outputs:
-        pathToOutputFiles.append("MoonLander/intro-dataset/low/"+file)
+        pathToInputFiles.append(If+"/"+file)
+    
     for index,file in zip(inputs,pathToInputFiles):
         fp = open(file,'r')
         content = fp.read()
         tokens = nltk.word_tokenize(content)
         wposTokens=[(lemmatizer.lemmatize(w[0],w[1]),w[1]) for w in get_wordnet_pos(tokens)]
-        woSwords = []
-        for token in wposTokens:
+        tokenizedDict[index]=wposTokens
+    
+    return tokenizedDict
+
+
+def dataPreProcessing(inputs,outputs,includeUT):
+    pathToInputFiles = []
+    pathToOutputFiles  = []
+    lemmatizer = WordNetLemmatizer()
+    totalTokens =0
+    senseMappingsFile = filedialog.askopenfilename(initialdir=os.getcwd(),
+                                               title="Select Sense Mappings File")
+    with open(senseMappingsFile,"rb") as fp:
+        senseMappings = pickle.load(fp)
+    stop_words = set(stopwords.words('english'))
+        
+    wposDict = tokenize(inputs,outputs)
+    woSwords = []
+    for index,sentence in wposDict.items():
+        for token in sentence:
             if(token[0] not in stop_words):
                 if(re.search('\A^[a-zA-Z0-9]',token[0])):
-                    #totalTokens+=1
+                        #totalTokens+=1
                     if(token[0].lower()+'.'+token[1] in senseMappings):
                         Vocab.add(token[0].lower()+'.'+token[1])
                         totalTokens+=1
@@ -96,6 +123,8 @@ def dataPreProcessing(inputs,outputs,includeUT):
                         Untagged.add(token[0].lower()+'.'+token[1])
                         woSwords.append(token[0].lower()+'.'+token[1])
                     inputDict[index]=woSwords
+    for file in outputs:
+        pathToOutputFiles.append(Of+"/"+file)
     for index,file in zip(outputs,pathToOutputFiles):
         fp = open(file,'r')
         content = fp.read()
@@ -115,15 +144,29 @@ def dataPreProcessing(inputs,outputs,includeUT):
                     #totalTokens+=1
                     outputDict[index]=woSwords
     ppdata =[inputDict,outputDict]
+    print(ppdata)
     #print(senseMappings)
     return ppdata
 
 
 
-def wordnetTagger(vocabulary):
-    synsetDict = {}
+def wordnetTagger():
+    vocabulary = dict()
+    entered = set()
+    tokenizedDict  = tokenize(InputFileNames,OutputFileNames)
+    for key in tokenizedDict:
+        wposTokens=tokenizedDict[key]
+        for token in wposTokens:
+            entry=  token[0]+"."+token[1]
+            if(len(vocabulary)!=0):
+                entered=[item for item in vocabulary if item==entry ]
+            if(len(entered)==0):
+                vocabulary[entry]=wposTokens
+    print(len(vocabulary))
+    print(vocabulary)
+    synsetDict={}
     for word in vocabulary: 
-        wpos =word.split('.')
+        wpos = word.split(".")
         wd =wpos[0]
         pos = wpos[1]
         synsetPos = []
@@ -135,26 +178,70 @@ def wordnetTagger(vocabulary):
         for ss in synset:
             if(ss.pos()==pos):
                 synsetPos.append(ss)
+        pseudo = "none"
+        synsetPos.append(pseudo)
+        print(synsetPos)
         i=1
         for ss in synsetPos:
-            print(str(i)+" "+ss.definition())
+            if(i!=len(synsetPos)):
+                print(str(i)+" "+ss.definition())
+            else:
+                print(str(i)+" "+ss)
             i=i+1
+        print("context:")
+        print(vocabulary[word])
         print("enter your choice:")
-        if(synsetPos):
-            choice = int(input())
+        choice = int(input())
+        if(choice==len(synsetPos)):
+            synsetDict[word]="none"
+        else:
             tss = synsetPos[choice-1]
             nameofSynset = tss.name()
             synsetDict[word] = nameofSynset
-    with open("senseMappings.txt","wb") as fp:
+    with open("senseMappingsGantt.txt","wb") as fp:
         pickle.dump(synsetDict,fp)
-            
 
-def Tokenizer(s):
-        regexp = '(\w)*\.[avrns]\.[0-9]*'
-        wds = s.split(" ")
-        return wds
+def taggerCheck():
+    senseMappingsFile = filedialog.askopenfilename(initialdir=os.getcwd(),
+                                                   title="Select Sense Mappings File")
+    with open(senseMappingsFile,"rb") as fp:
+        senseMappings = pickle.load(fp)
+    
+    print(len(senseMappings))
+    tagged= [mapping for mapping in senseMappings if senseMappings[mapping]!='none']
+    print(len(tagged))
+    untagged = [mapping for mapping in senseMappings if mapping not in tagged]
+    print(len(untagged))
+    print(untagged)
+
+
+def threadDivisionPoints(features,divisions):
+        n1=0
+        itr=0
+        fl = len(features)
+        ops= (fl*(fl-1))/2
+        sps = [(0,1)]
+        load= ops/divisions
+        while(n1<len(features)-1):
+            n2=n1+1
+            while(n2<=len(features)-1):
+                itr+=1
+                n2+=1
+                if(itr%load ==0):
+                    if(n2!=len(features)-1):
+                        if(n2!=len(features)):
+                            sps.append((n1,n2))
+                    else:
+                        sps.append((n1+1,n2))
+                    
+            n1+=1
+        print("Thread division points")
+        if((len(features)-2,len(features)-1) not in sps):
+            sps.append((len(features)-2,len(features)-1))
+        print(sps)
+        return sps
+    
         
-  
 def computeSrs(features):
     n1=0
     itr = 0
@@ -162,12 +249,39 @@ def computeSrs(features):
         n2 = n1+1
         while(n2 <=len(features)-1):
             itr+=1
+            print("Iteration " + str(itr
+                                     ))
             srDict[itr] = wnUtils.sr(wn.synset(features[n1]),wn.synset(features[n2]))
-            print("Iteration: "+str(itr))
             n2+=1
         n1+=1
     
     return srDict
+
+    
+    
+def multiThreadSrs(features,start,end,tid,divLenght):
+    n1=start[0]
+    n2 = start[1]
+    itr=tid*divLenght    #div lenght represents work load for each thread
+                         # tid should be equal to zero for first thread and 1 for next
+                         # and so on
+    while(n1 <= end[0]):
+        if(n1!=start[0]):
+            n2 = n1+1
+        if(n1 ==end[0]):
+            while(n2<=end[1]-1):
+                itr+=1
+            print("Tid "+ str(tid)+" ,Iteration"+str(itr))
+            srDict[itr]=wnUtils.sr(wn.synset(features[n1]),wn.synset(features[n2]))
+            n2+=1
+        else:    
+            while(n2<=len(features)-1):
+                itr+=1
+                print("Tid "+str(tid)+" ,Iteration"+str(itr))
+                srDict[itr]=wnUtils.sr(wn.synset(features[n1]),wn.synset(features[n2]))
+                n2+=1
+        n1+=1
+    
     
     
 def getTfIdf(inputDict,outputDict):
@@ -202,14 +316,7 @@ def getTfIdf(inputDict,outputDict):
     #print(inputs)
     #print(outputs)
     
-    """
-    pathToInputFiles =[]
-    for file in inputs:
-        pathToInputFiles.append("MoonLander/intro-dataset/high/"+file)
-    pathToOutputFiles =[]
-    for file in outputs:
-        pathToOutputFiles.append("MoonLander/intro-dataset/low/"+file)
-    """
+    
     vectorizer = TfidfVectorizer(input='content',norm=None,vocabulary=vocab,
                                  token_pattern='(\w)*\.[avnsr]\.[0-9]*',tokenizer=Tokenizer)
     documentMapping = vectorizer.fit_transform(inputs)
@@ -221,6 +328,7 @@ def getTfIdf(inputDict,outputDict):
     #print(vectorizer.vocabulary_)
     tfIdfs = []
     tfIdfs.append(documentMapping)
+    print("doc mapping type "+ type(documentMapping).__name__)
     tfIdfs.append(queryMapping)
     tfIdfs.append(features)
     return tfIdfs
@@ -246,28 +354,245 @@ def TfIdfTest():
             if(itr>1):
                 break
         break
-    """
-    for item in tfIdfs:
-        print(csr_matrix(item).toarray())
-        break
-    """
+    
 # algorithm n(n-1)/2 dimensions
+def rfs():
+    ppdata = dataPreProcessing(InputFileNames,OutputFileNames,False)
+    tfIdfs = getTfIdf(ppdata[0],ppdata[1])
+    return tfIdfs
+
 def cosineSim2():
     # includeUT is 3rd positional argument false for this alg
     ppdata = dataPreProcessing(InputFileNames,OutputFileNames,False)
     tfIdfs = getTfIdf(ppdata[0],ppdata[1])
     features = tfIdfs[2]
-    tfIdfsDense=[]
+    print(features)
+    rowsHigh = len(InputFileNames)
+    rowsLow = len(OutputFileNames)
+    cols = len(features)
+    higher = np.ndarray((rowsHigh,cols))   #moon 
+    lower =  np.ndarray((rowsLow,cols))    #moon
+    idx= 0 # 2 matrices, 1 10x120 for high,5x120 1 for low level reqs,
     for item in tfIdfs:
         if(isinstance(item,list)):
             break    # break when features are read
-        tfIdfsDense.append(item.todense())
-    srs=computeSrs(features)
+        if(idx ==0):
+            higher= item.todense()
+        else:
+            lower= item.todense()
+            
+        idx+=1
+    
+    similarity_matrix1  = cosine_similarity(higher,lower)
+    similarities1 = []
+    hi=0
+    while hi<rowsHigh:         #moon
+        li=0
+        temp=[]
+        while li<rowsLow:      #moon
+            temp.append(similarity_matrix1[hi][li])
+            li+=1
+        hi+=1
+        similarities1.append(temp)
+    sortedSims1=[]
+    for sim in similarities1:
+        temp= [i for i in sorted(enumerate(sim), key=lambda x:x[1],reverse=True)]
+        sortedSims1.append(temp)
+    
+
+    #Thread Divison Points
+    #Threading code
+    """
+    workers= 10
+    divisions=threadDivisionPoints(features,workers)
+    
+    load = ((len(features)*(len(features)-1))/2)/workers
+    print("Load "+str(load))
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+        idx=0
+        while idx<=len(divisions)-2:
+            executor.submit(multiThreadSrs,features,divisions[idx],divisions[idx+1],
+                            idx,load)
+            idx+=1
+     """       
+    #Threading code
+    #here after obtaining the divisions it would be best to call the thread pool
+    #executor
+    #srs=computeSrs(features) can rest for a while, while we access srDict.
+    """
     with open("srDict.txt","wb") as fp:
         pickle.dump(srs,fp)
+    """
+    Cols2 = (cols*(cols-1))/2
+    with open("srDict.txt","rb") as fp:
+        srs = pickle.load(fp)
+    
+    #print(len(tfIdfsDense[1]))
+    tfIdfs2Higher = np.ndarray((rowsHigh,Cols2)) #moon# 2 matrices, 1 10x7140 for high, 5x7140 for low level reqs
+    tfIdfs2Lower  = np.ndarray((rowsLow,Cols2))  #moon
+
+    
+    di=0
+    for req in higher:
+            pairs= []
+            n1=0
+            while n1<len(features)-1:
+                n2 = n1+1
+                while n2<=len(features)-1:
+                    htfIdf = req.item(n1)+req.item(n2)
+                    pairs.append(htfIdf)
+                    n2+=1
+                n1+=1
+            pa = np.asarray(pairs)
+            pa = pa.reshape(1,Cols2)     #moon
+            tfIdfs2Higher[di]= pa #np.append(tfIdfs2Higher,pa,axis=0)
+            di+=1
+    di=0
+    for req in lower:
+            pairs= []
+            n1=0
+            while n1<len(features)-1:
+                n2 = n1+1
+                while n2<=len(features)-1:
+                    htfIdf = req.item(n1)+req.item(n2)
+                    pairs.append(htfIdf)
+                    n2+=1
+                n1+=1
+            pa = np.asarray(pairs)
+            pa = pa.reshape(1,Cols2)     #moon
+            tfIdfs2Lower[di]=pa  #np.append(tfIdfs2Lower,pa,axis=0) 
+            di+=1
+    pi =0
+    ri =0
+    while ri<rowsHigh:
+        while pi<Cols2:      #moon
+            tfIdfs2Higher[ri][pi]=tfIdfs2Higher[ri][pi]*srs[pi+1]
+            pi+=1
+    
+        ri+=1
+            
+    pi=0
+    ri=0
+    while ri<rowsLow:                 #moon
+        while pi<Cols2:
+            tfIdfs2Lower[ri][pi]=tfIdfs2Lower[ri][pi]*srs[pi+1]
+            pi+=1
+    
+        ri+=1
+    
+    similarity_matrix2=cosine_similarity(tfIdfs2Higher,tfIdfs2Lower) #10x5 row high doc, col low doc
+    hi=0
+    similarities = []
+    while(hi<rowsHigh):       #moon
+        li=0
+        while(li<rowsLow):
+            sim= similarity_matrix2[hi][li]
+            li+=1
+            similarities.append(sim)
+        hi+=1
+    
+    similaritiesSep =[]
+    hi=0
+    while(hi<rowsHigh):       #MOON
+        
+        li=0
+        temp=[]
+        while(li<rowsLow):
+            temp.append(similarities[(hi*5)+li])
+            li+=1
+        similaritiesSep.append(temp)
+        hi+=1
+    sortedSims =[]
+    for sim in similaritiesSep:
+        temp= [i for i in sorted(enumerate(sim), key=lambda x:x[1],reverse=True)]
+        sortedSims.append(temp)
+    pi=0
+    for item,item1 in zip(sortedSims,sortedSims1):
+        pi+=1
+        print(pi)
+        print(item)
+        print(item1)
+    #only considering semantic. Now generate links,how?
+    return [sortedSims,sortedSims1]
+    #computeSrs(features)
+
+def omiotis():
+    tfIds = rfs()
+    with open('srDict.txt','rb') as fp:
+        srs = pickle.load(fp)
+    print(srs)
+omiotis()
+
+def linkPrediction20(sims):
+    hid=0
+    link=[]
+    for ls in sims:
+        for tup in ls:
+            if(tup[1] >= 0.35):
+                link.append((hid,tup[0]))
+        
+        hid+=1
+    print(link)
+    print(len(link))
+    return link
+
+
+def recallMetric(link):
+    tps=0
+    for l in traceLinks:
+        if l in link:
+            tps+=1
+    recall = tps/len(traceLinks)
+    print(recall)
+
+def precisionMetric(link):
+    tps = 0
+    for l in link:
+        if l in traceLinks:
+            tps+=1
+    precision = tps/len(link)
+    print(precision)
+    
+def ensembleSimilarities(sims):
+    ensembleSims=[]
+    for lsSem,lsSyn in zip(sims[0],sims[1]):
+        highList=[]
+        for tup1 in lsSem:
+            for tup2 in lsSyn:
+                if(tup1[0]==tup2[0]):
+                    tup = (tup1[0],(tup1[1]+tup2[1])/2)
+                    highList.append(tup)
+                    break
+        ensembleSims.append(highList)
+    return ensembleSims
+    
+def datasetTests():        
+    sims =cosineSim2()   
+    semLinks=linkPrediction20(sims[0]) #Tuples with high id,low id
+    synLinks=linkPrediction20(sims[1]) 
+    
+    print("semantic recall")
+    recallMetric(semLinks)
+    print("syntatic recall")
+    recallMetric(synLinks)
+    print("semantic precision")
+    precisionMetric(semLinks)
+    print("syntatic precision")
+    precisionMetric(synLinks)
+    
+    ensemble = ensembleSimilarities(sims)
+    ensLinks=linkPrediction20(ensemble)
+    
+    print("ensemble recall")
+    recallMetric(ensLinks)
+    print("ensemble precision")
+    precisionMetric(ensLinks)
+    print(ensLinks)
+    print(len(ensLinks))
+
     #should be 120*119/2 for n = 120, 7140
 #wordnetGraph():
-cosineSim2()
 #regexp is actually redundant as tokens are seperated by space
 def regexpTest():
     reg = '((\w)*\.[avnsr]\.[0-9]*)|((\w)*\.[avnsr])'
@@ -362,60 +687,6 @@ def test():
     for o in op:
         print(csr_matrix(o).toarray())
 
-def wordCount():
-    lemma = wn.words()
-    lemma =list(lemma)
-    print(len(lemma))
 
 # Global Variables
-lemma = wn.words()
-allSynsets =wn.all_synsets() # get all synsets
-allSynsets = list(allSynsets)
-wordToCandidates = {}
 
-
-def prepareData():
-    for word in lemma:
-        synsets = wn.synsets(word)
-        senses =[]
-        for s in synsets:
-            sense =[]
-            pos = s.pos()
-            for lem in s.lemmas():
-                ls = lem.synset()
-                ln = lem.name()
-                lns = wn.synsets(ln)
-                nlns=[]
-                for ss in lns:
-                    if(ss.pos()==pos):
-                        nlns.append(ss)
-                li  = nlns.index(ls)+1
-                triple=(ln,li,pos)
-                sense.append(triple)
-            senses.append(sense)
-        wordToCandidates[word]=senses
-        
-        
-
-def prevTest():
-    ds = wn.synsets('dog')
-    # synset of last sense Synset('chase.v.01')
-    print(ds[7].lemmas())
-    # where does 'tracks synset,chase.v.01 ,occur in synsets for the lemma'   
-    ts = wn.synsets('track')
-    print(ts) # occurs at 13th index
-    #removing noun senses from the ts
-    nm = []
-    for t in ts:
-        if(t.pos()=='v'):
-            nm.append(t)
-        
-    
-    ss= wn.synset('chase.v.01')
-    print(nm.index(ss)+1)
-    print(nm)
-
-
-
-#where does lemma's synset occur in the set of synsets for the lemma
-#get lemma,synset from Lemma, get synsets of lemma, get where synset occurs in lemma.
