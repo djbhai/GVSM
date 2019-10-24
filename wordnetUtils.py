@@ -20,18 +20,17 @@ import math
 from spellchecker import SpellChecker
 import networkx as nx
 import matplotlib.pyplot as plt
-import pprint
+from Lib import heapq
 
 class wordnetUtils:
     """
     wn =0
     wnGraph = 0
     """
-    def __init__(self,wn,wnGraph,pp):
+    def __init__(self):
         self.wn=nltk.corpus.wordnet
         self.wnGraph = self.wnGraphInitializer()
-        self.pp = pprint.PrettyPrinter(width=41,compact=True)
-        self.pp.pprint(self.wnGraph)   #debug
+        print(self.wnGraph)   #debug
     #self can only be used in class methods scope
     #instance variables can be accessed using self in method scope.
     
@@ -326,8 +325,9 @@ class wordnetUtils:
         with open("WordnetGraph.txt","wb") as fp:
             write_gpickle
         """
-        print("I am here")
-        print(len(G.edges()))   #debug
+
+
+
         return G
 
     def wnGraphInitializer(self):            
@@ -367,7 +367,8 @@ class wordnetUtils:
                     rightSubGraph.add(x)
          
          return [nextLeft,nextRight,condition]
-                
+     
+    
     
     def computeNetwork(self,s1,s2):
         left = {s1}
@@ -727,96 +728,182 @@ class wordnetUtils:
             depList.append(self.wnGraph.nodes[node]['depth'])
         
         print(max(depList))
+        
+    def heapDjikstra(self,s1,s2,network):
+        #underconsttuction
+        #found = set()
+        found = []
+        entryFinder= {}
+        visited = set()
+        recentlyAdded = s1
+        #visited.add(s1)
+        toexpand = s1
+        # Try visited.pop!= s2
+        #while(s2 not in visited):
+        if(s1 == s2):
+            d=network.nodes[s1]['depth']
+            sr= d/20
+            return sr
+        while(s2 != recentlyAdded):
+            successors=set(network.neighbors(toexpand))
+            for item in successors-visited:
+                ts = network.nodes[toexpand]['sr']
+                adict = network[toexpand][item]
+                iweight =0
+                for key,value in adict.items():
+                    if(iweight<value['weight']):
+                        iweight = value['weight']
+                d1= network.nodes[toexpand]['depth']
+                d2 = network.nodes[item]['depth']
+                num = 2*d1*d2
+                den = (d1+d2)*20
+                hm = num/den
+                srReal = hm*iweight*ts
+                srHeap = -srReal
+                if(srReal>network.nodes[item]['sr'] and network.nodes[item]['added']==False):
+                    srDict = {item:{'sr':srReal}}
+                    adDict = {item:{'added':True}}
+                    nx.set_node_attributes(network,srDict)
+                    nx.set_node_attributes(network,adDict)
+                    heapEntry = [srHeap,item]
+                    #REMOVE item from the set and add item the new item
+                    heapq.heappush(found,heapEntry)
+            maxim =0
+            
+            maxim,node = heapq.heappop(found)
+            visited.add(node)
+            toexpand = node
+            recentlyAdded = node
+        return network.nodes[s2]['sr']
     
+    def amDjikstra(self,s1,s2,network):
+        found = set()
+        visited = set()
+        visited.add(s1)
+        toexpand = s1
+        if(s1 == s2):
+            d=network.nodes[s1]['depth']
+            sr= d/20
+            return sr
+        while(s2 not in visited):
+            successors=set(network.neighbors(toexpand))
+            for item in successors-visited:
+                ts = network.nodes[toexpand]['sr']
+                adict = network[toexpand][item]
+                iweight =0
+                for key,value in adict.items():
+                    if(iweight<value['weight']):
+                        iweight = value['weight']
+                d1= network.nodes[toexpand]['depth']
+                d2 = network.nodes[item]['depth']
+                num = 2*d1*d2
+                den = (d1+d2)*20
+                hm = num/den
+                sr = hm*iweight*ts
+                if(sr>network.nodes[item]['sr'] and network.nodes[item]['added']==False):
+                    srDict = {item:{'sr':sr}}
+                    adDict ={item:{'added':True}}
+                    nx.set_node_attributes(network,srDict)
+                    nx.set_node_attributes(network,adDict)
+                    #REMOVE item from the set and add item the new item
+                    found.add(item)
+            maxim =0
+            for item in found:              #If found can be made a heap,that will improve the performance.
+                                            #This and thresholds to stop the operation should improve the performance.
+                if(network.nodes[item]['sr']>maxim):
+                    maxim =network.nodes[item]['sr']
+                    maximNd = item
+            found.remove(maximNd)
+            """
+            print("maxNd "+str(maximNd))
+            print(maxim)
+            """
+            #print("max found "+str(maxim))
+            visited.add(maximNd)
+            toexpand = maximNd
+        return network.nodes[s2]['sr']
     
-                
+    def realSrComputation(self,w1,w2):
+        synsetsLeft= self.wn.synsets(w1)
+        synsetsRight = self.wn.synsets(w2)
+        lsg = set(synsetsLeft)
+        rsg = set(synsetsRight)
+        currentPass = [lsg,rsg,True]
+        subGraph = lsg.union(rsg)
+        noCon = False
+        if(synsetsLeft[0]== None): 
+            if(w1 ==w2):
+                return 1
+            else:
+                return 0
+        noCon = False
+        while(currentPass[2]):
+            if((len(currentPass[0]) or len(currentPass[1]))==0):
+                noCon = True
+                break
+            currentPass=self.expander(currentPass,subGraph,lsg,rsg)
+        if(noCon == True):
+            return 0
+            #may be return true or Zero
+        connection = self.wnGraph.subgraph(subGraph)
+        return connection
+    
+        
+    
     def srComputation(self,s1,s2):
+        comps1 = s1.split(".")
+        comps2 = s2.split(".")
+        special = ['1.1.n']
+        if((s1 in special) or (s2 in special)):
+            if(comps1==comps2):
+                return 1
+            else:
+                return 0
+        if((len(comps1)==3 and len(comps2)==3)):
+            try:
+                    s1= self.wn.synset(s1)
+                    s2 = self.wn.synset(s2)
+            except ValueError:
+                print(s1,s2)
+                if(comps1==comps2):
+                    return 1
+                else:
+                    return 0
+                
+        else:
+            if(comps1==comps2):
+                return 1
+            else:
+                return 0
         found = set()
         visited = set()
         visited.add(s1)
         toexpand = s1
         network = self.computeNetwork(s1,s2) #incase other method needs to be used network should be replaced 
-                                        #by scaled and the below lines of code must be used.
+                                        #by scaled and the below lines of code must be used
         #scaled = scaledWeightedGraph(s1,s2)
+        nx.draw(network)
         if(network == 0):
             return 0
         nx.set_node_attributes(network,0,'sr')
+        nx.set_node_attributes(network,False,'added')
         #print("SR initialization Test")
         #print(scaled.nodes[s2]['sr'])
         insrDict ={toexpand:{'sr':1}}
         nx.set_node_attributes(network,insrDict)
-        """
-        print("s1 depth")
-        """
-        d1= network.nodes[s1]['depth']
-        """
-        print(d1)
-        """
         if(network == 0):
             return 0
         else:
-            while(s2 not in visited):
-                successors=set(network.neighbors(toexpand))
-                for item in successors-visited:
-                    ts = network.nodes[toexpand]['sr']
-                    adict = network[toexpand][item]
-                    iweight =0
-                    for key,value in adict.items():
-                        if(iweight<value['weight']):
-                            iweight = value['weight']
-                    d1= network.nodes[toexpand]['depth']
-                    d2 = network.nodes[item]['depth']
-                    num = 2*d1*d2
-                    den = (d1+d2)*20
-                    hm = num/den
-                    sr = hm*iweight*ts
-                    if(sr>network.nodes[item]['sr']):
-                        srDict = {item:{'sr':sr}}
-                        nx.set_node_attributes(network,srDict)
-                        found.add(item)
-                maxim =0
-                for item in found:
-                    if(network.nodes[item]['sr']>maxim):
-                        maxim =network.nodes[item]['sr']
-                        maximNd = item
-                found.remove(maximNd)
-                """
-                print("maxNd "+str(maximNd))
-                print(maxim)
-                """
-                #print("max found "+str(maxim))
-                visited.add(maximNd)
-                toexpand = maximNd
-               
-        self.pp.pprint("sr of the second synset")       
-        self.pp.pprint(network.nodes[s2]['sr'])  
-        """    
-        print("number of edges")
-        print(nx.number_of_edges(network))
-        """
-        return network.nodes[s2]['sr']
+            #sr = self.amDjikstra(s1,s2,network)
+            sr = self.heapDjikstra(s1,s2,network)
+        print("sr of the second synset")       
+        print(sr)
+        return sr
+        
     
-                        
     def sr(self,s1,s2):
         sr1= self.srComputation(s1,s2)
-        """
-        sr2 = srComputation(s2,s1)
-        print("srs:")
-        print(sr1)
-        print(sr2)
-        srVal = (sr1+sr2)/2
-        print(srVal)
-        
-        return srVal
-        """
         return sr1
-    
-    """
-    s1 = wn.synset("basenji.n.01")
-    s2 = wn.synset("dog.n.01")
-    sr(s1,s2)
-    """   
-        
         
     #print(len(sg))
     def test():
@@ -825,7 +912,7 @@ class wordnetUtils:
         #test for symmetry of relations
         #symmetrify(wnGraph)
         
-        
+        print("baba")
         """
         b = symRelationsTest('pertainym')
         print(b)
@@ -911,4 +998,4 @@ class wordnetUtils:
         print(s.hyponyms())
         ss= wn.synset('act.v.01')
         print(ss.root_hypernyms())
-         """      
+         """    
